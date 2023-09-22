@@ -39,3 +39,5 @@ And filtered using the condition:
       || 
       (github.event.action == 'closed' && contains(github.event.pull_request.labels.*.name, 'deploy'))
 ```
+
+123

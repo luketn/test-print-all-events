@@ -1,0 +1,34 @@
+# Destroys a temporary environment for testing a version of the code when a pull request is closed or unlabeled, if the label 'deploy' was set.
+name: Destroy PR Environment
+concurrency:
+  group: "deploy-${{ github.event.pull_request.head.ref }}"
+  cancel-in-progress: false
+
+on:
+  pull_request:
+    types: [ closed, unlabeled ]
+    
+jobs:
+  destroy-dev-pr-environment:
+    if: |
+      (github.event.action == 'unlabeled' && github.event.label.name == 'deploy')
+      ||
+      (github.event.action == 'closed' && contains(github.event.pull_request.labels.*.name, 'deploy'))
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          EVENT_CONTEXT: ${{ toJSON(github.event) }}
+        run: echo $EVENT_CONTEXT
+      - run: echo "Destroying environment for branch '${{ github.event.pull_request.head.ref }}' with labels '${{ join(github.event.pull_request.labels.*.name) }}' (pull request ${{github.event.action}})!"
+
+  destroy-prod-pr-environment:
+    if: |
+      (github.event.action == 'unlabeled' && github.event.label.name == 'deploy-to-production')
+      ||
+      (github.event.action == 'closed' && contains(github.event.pull_request.labels.*.name, 'deploy-to-production'))
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          EVENT_CONTEXT: ${{ toJSON(github.event) }}
+        run: echo $EVENT_CONTEXT
+      - run: echo "Destroying environment for branch '${{ github.event.pull_request.head.ref }}' with labels '${{ join(github.event.pull_request.labels.*.name) }}' (pull request ${{github.event.action}})!"

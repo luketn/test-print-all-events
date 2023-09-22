@@ -1,0 +1,60 @@
+# Deploys a temporary environment for testing a version of the code when a pull request is created / updated with a 'deploy' label
+name: Deploy PR Environment
+concurrency:
+  group: "deploy-${{ github.event.pull_request.head.ref }}"
+  cancel-in-progress: false
+
+on:
+  pull_request:
+    types: [ labeled, synchronize ]
+
+jobs:
+  deploy-pr-environment:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print Event
+        env:
+          EVENT_CONTEXT: ${{ toJSON(github.event) }}
+        run: echo $EVENT_CONTEXT
+
+      - name: Deploy to Dev
+        if: contains(github.event.pull_request.labels.*.name, 'deploy')
+        env:
+          PR_DEPLOY_ENVIRONMENT: dev
+        run: |
+          echo "Deploying environment for branch '${{ github.event.pull_request.head.ref }}' with labels '${{ join(github.event.pull_request.labels.*.name) }}' (pull request ${{ github.event.action }}) to environment ${PR_DEPLOY_ENVIRONMENT}!"
+          echo "Contains output: ${{ contains(github.event.pull_request.labels.*.name, 'deploy-to-production') }}"
+          echo "DEV_URL=https://mycodefu.com/#dev" >> $GITHUB_ENV
+
+      - name: Deploy to Prod
+        if: contains(github.event.pull_request.labels.*.name, 'deploy-to-production')
+        env:
+          PR_DEPLOY_ENVIRONMENT: prod
+        run: |
+          echo "Deploying environment for branch '${{ github.event.pull_request.head.ref }}' with labels '${{ join(github.event.pull_request.labels.*.name) }}' (pull request ${{ github.event.action }}) to environment ${PR_DEPLOY_ENVIRONMENT}!"
+          echo "Contains output: ${{ contains(github.event.pull_request.labels.*.name, 'deploy-to-production') }}"
+          echo "PROD_URL=https://mycodefu.com/#prod" >> $GITHUB_ENV
+
+      - name: Comment on Deployments
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{secrets.GITHUB_TOKEN}}
+          script: |
+            const devUrl = process.env.DEV_URL
+            const prodUrl = process.env.PROD_URL
+            if (devUrl || prodUrl) {
+              let body = `Deployed the following pull request environments:`
+              if (devUrl) {
+                body+=`\nDev->${devUrl}`
+              }
+              if (prodUrl) {
+                body+=`\nProd->${prodUrl}`
+              }
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: body
+              })
+            }
+            

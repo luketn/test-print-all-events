@@ -1,0 +1,13 @@
+on:
+  pull_request:
+  workflow_dispatch:
+  push:
+
+jobs:
+  print-event:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print Event
+        env:
+          EVENT_CONTEXT: ${{ toJSON(github.event) }}
+        run: echo $EVENT_CONTEXT
